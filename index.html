@@ -34,10 +34,9 @@
       p.sub { margin: 0 0 24px; color: var(--muted); }
       .layout {
         display: grid;
-        grid-template-columns: minmax(0, 420px) minmax(280px, 360px);
+        grid-template-columns: minmax(0, 500px) minmax(300px, 600px);
         gap: 24px;
         align-items: start;
-        max-width: 840px;
       }
       .card {
         background: var(--card);
@@ -177,7 +176,7 @@
 
         <div class="row">
           <button id="simulate">▶ Simulate day</button>
-          <button id="theme">Toggle labels (DE)</button>
+          <button id="languageBtn">Toggle labels (DE)</button>
           <button id="reset-colors">Reset colors</button>
         </div>
       </div>
@@ -264,11 +263,21 @@
 
       // Labels demo (works the same as React/Angular passing a `labels` prop).
       let de = false;
-      document.getElementById("theme").addEventListener("click", () => {
+      const labelsBtn = document.getElementById("languageBtn");
+      labelsBtn.addEventListener("click", () => {
         de = !de;
         el.labels = de
-          ? { solar: "Solar", grid: "Netz", home: "Haus", battery: "Akku", wallbox: "Wallbox", wallbox2: "Wallbox 2" }
-          : undefined;
+          ? {
+              solar: "Solar",
+              grid: "Netz",
+              home: "Haus",
+              battery: "Akku",
+              wallbox: "Wallbox",
+              wallbox2: "Wallbox 2",
+            }
+          : null;
+
+        labelsBtn.textContent = de ? "Toggle labels (EN)" : "Toggle labels (DE)";
       });
 
       // Simulate a sunny day: sunrise→sunset over ~60s, one calm update/second
