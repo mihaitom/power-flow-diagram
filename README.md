@@ -28,18 +28,18 @@ It ships as a `<power-flow>` **Web Component**, so it works natively in **React,
 Angular, Vue, Svelte or plain HTML** — plus a tiny vanilla API. No canvas, just
 crisp scalable vectors; no runtime framework dependency.
 
-- 🔋 **Optional nodes** — solar, battery and both wallboxes appear automatically
+- **Optional nodes** — solar, battery and both wallboxes appear automatically
   when you pass their values; empty rows are trimmed so there's no dead space.
-- 🎯 **Power-proportional animation** — dot speed scales with watts and stays
+- **Power-proportional animation** — dot speed scales with watts and stays
   smooth (no jumping) as values update live.
-- 🧮 **Consistent flow math** — each source is split across its sinks with no
+- **Consistent flow math** — each source is split across its sinks with no
   double-counting, modelled after Home Assistant's
   [power-flow-card-plus](https://github.com/flixlix/power-flow-card-plus).
-- 💍 **Coverage rings** — home ring shows load sources (solar / battery / grid);
+- **Coverage rings** — home ring shows load sources (solar / battery / grid);
   grid ring shows export sources; battery ring shows state of charge.
-- 🎨 **Themeable** — every node colour (including separate charge/discharge colours
+- **Themeable** — every node colour (including separate charge/discharge colours
   for battery and grid) and every label is overridable.
-- 🪶 **Tiny & isolated** — ~7 kB min+gzip, zero runtime deps, shadow DOM so its
+- **Tiny & isolated** — ~7 kB min+gzip, zero runtime deps, shadow DOM so its
   styles never leak into your app.
 
 ## Install
