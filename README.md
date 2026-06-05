@@ -29,17 +29,18 @@ Angular, Vue, Svelte or plain HTML** — plus a tiny vanilla API. No canvas, jus
 crisp scalable vectors; no runtime framework dependency.
 
 - 🔋 **Optional nodes** — solar, battery and both wallboxes appear automatically
-  when you pass their values, and the layout trims away the empty rows.
-- 🎯 **Power-proportional animation** — dot speed scales with watts, and stays
-  smooth (no jumping) as values update.
+  when you pass their values; empty rows are trimmed so there's no dead space.
+- 🎯 **Power-proportional animation** — dot speed scales with watts and stays
+  smooth (no jumping) as values update live.
 - 🧮 **Consistent flow math** — each source is split across its sinks with no
   double-counting, modelled after Home Assistant's
   [power-flow-card-plus](https://github.com/flixlix/power-flow-card-plus).
-- 💍 **Coverage rings** — the home ring shows what feeds the load (solar / battery
-  / grid); the grid ring shows what feeds an export (solar / battery).
-- 🎨 **Themeable** — every node colour and label is overridable.
-- 🪶 **Tiny & isolated** — ~6 kB min+gzip, zero runtime deps, rendered in a shadow
-  root so its styles never leak.
+- 💍 **Coverage rings** — home ring shows load sources (solar / battery / grid);
+  grid ring shows export sources; battery ring shows state of charge.
+- 🎨 **Themeable** — every node colour (including separate charge/discharge colours
+  for battery and grid) and every label is overridable.
+- 🪶 **Tiny & isolated** — ~7 kB min+gzip, zero runtime deps, shadow DOM so its
+  styles never leak into your app.
 
 ## Install
 
@@ -65,12 +66,13 @@ npm install powerflow
 <script type="module">
   const pf = document.getElementById("pf");
   pf.data = {
-    solar: 2400,    // PV production (W)
-    grid: -600,     // grid power: + import, − export
-    load: 1800,     // house consumption (W)
-    battery: -300,  // + discharging, − charging (optional)
-    batterySoc: 82, // state of charge in % (optional)
-    wallbox: 1100,  // EV charger consumption (optional)
+    solar: 3000,     // PV production (W); omit/null hides the node
+    grid: -600,      // grid power: positive = import, negative = export
+    load: 2400,      // total house consumption (W)
+    battery: -500,   // negative = charging, positive = discharging; omit/null hides
+    batterySoc: 72,  // state of charge in % (optional, shows SoC ring)
+    wallbox: 3600,   // EV charger below the house (optional)
+    wallbox2: 3600,  // second EV charger above the house (optional)
   };
 </script>
 ```
@@ -168,13 +170,14 @@ leak into your app.
 
 ```ts
 {
-  solar:    "#fb8c00", // orange
-  home:     "#43a047", // green
-  gridIn:   "#1e88e5", // blue  — importing from grid
-  gridOut:  "#e53935", // red   — exporting to grid
-  battery:  "#8e24aa", // violet
-  wallbox:  "#00acc1", // cyan
-  wallbox2: "#00897b", // teal
+  solar:      "#fcd34d", // amber-yellow
+  home:       "#818cf8", // periwinkle
+  gridIn:     "#60a5fa", // sky blue  — importing from grid
+  gridOut:    "#f472b6", // pink      — exporting to grid
+  batteryIn:  "#4ade80", // lime green — charging
+  batteryOut: "#fb923c", // orange    — discharging
+  wallbox:    "#22d3ee", // cyan
+  wallbox2:   "#2dd4bf", // teal
 }
 ```
 
@@ -204,11 +207,13 @@ line.
 
 ```bash
 npm install
-npm run dev          # playground: sliders, test-case buttons, "simulate day"
+npm run dev           # playground at localhost:5173 — sliders, test cases, simulate day
 
-npm run build        # both of the below
-npm run build:lib    # → dist/      the publishable library (JS bundles + .d.ts)
-npm run build:site   # → dist-site/ the static playground (e.g. for GitHub Pages)
+npm run build         # build:lib + build:site
+npm run build:lib     # → dist/      publishable library (JS bundles + .d.ts)
+npm run build:site    # → dist-site/ static playground (GitHub Pages)
+
+npm run capture:gif   # re-generate docs/preview.gif (requires ffmpeg + chromium)
 ```
 
 ## Credits
