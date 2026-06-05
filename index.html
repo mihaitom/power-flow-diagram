@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>powerflow — playground</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --fg: #1a1a1a;
+        --muted: #6b7280;
+        --card: #ffffff;
+        --bg: #f3f4f6;
+        --line: #e5e7eb;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --fg: #e5e7eb;
+          --muted: #9ca3af;
+          --card: #1f2430;
+          --bg: #11141b;
+          --line: #2c3340;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font: 15px/1.5 system-ui, -apple-system, sans-serif;
+        color: var(--fg);
+        background: var(--bg);
+        padding: 24px;
+      }
+      h1 { font-size: 20px; margin: 0 0 4px; }
+      p.sub { margin: 0 0 24px; color: var(--muted); }
+      .layout {
+        display: grid;
+        grid-template-columns: minmax(0, 420px) minmax(280px, 360px);
+        gap: 24px;
+        align-items: start;
+        max-width: 840px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 18px;
+
+      }
+      .resize {
+        resize: both;
+        overflow: auto;
+      }
+      power-flow { color: var(--fg); }
+      /* The diagram card fills its content box with the diagram, so resizing
+         the card's height (not just width) re-fits the diagram. */
+      .diagram-card { position: relative; overflow: hidden; }
+      .diagram-card > #diagram { width: 100%; height: 100%; }
+      .resize-hint {
+        position: absolute;
+        right: 12px;
+        bottom: 6px;
+        font-size: 11px;
+        color: var(--muted);
+        pointer-events: none;
+        user-select: none;
+      }
+      .ctrl { margin-bottom: 16px; }
+      .ctrl label {
+        display: flex;
+        justify-content: space-between;
+        font-weight: 600;
+        margin-bottom: 6px;
+      }
+      .ctrl label .v { color: var(--muted); font-variant-numeric: tabular-nums; }
+      input[type="range"] { width: 100%; accent-color: #fb8c00; }
+      .toggle { display: flex; align-items: center; gap: 8px; font-weight: 600; margin-bottom: 12px; }
+      .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+      button {
+        font: inherit;
+        font-weight: 600;
+        padding: 7px 12px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: transparent;
+        color: var(--fg);
+        cursor: pointer;
+      }
+      button:hover { border-color: var(--muted); }
+      button.on { background: #fb8c00; border-color: #fb8c00; color: #fff; }
+      hr { border: none; border-top: 1px solid var(--line); margin: 16px 0; }
+      .section-title { font-weight: 700; font-size: 13px; margin-bottom: 10px; }
+      .colors { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; }
+      .colors label {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        font-weight: 600;
+        font-size: 13px;
+      }
+      input[type="color"] {
+        width: 34px;
+        height: 24px;
+        padding: 0;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: transparent;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>powerflow — playground</h1>
+    <p class="sub">
+      The same <code>&lt;power-flow&gt;</code> Web Component you'd drop into React,
+      Angular, Vue or plain HTML. Drag the sliders or hit “Simulate day”.
+    </p>
+
+    <div class="layout">
+      <div class="card">
+        <div class="ctrl">
+          <label>Grid (− export / + import) <span class="v" id="v-grid"></span></label>
+          <input id="grid" type="range" min="-6000" max="6000" step="50" value="-800" />
+        </div>
+        <div class="ctrl">
+          <label>Home load <span class="v" id="v-load"></span></label>
+          <input id="load" type="range" min="0" max="8000" step="50" value="2400" />
+        </div>
+        <hr />
+        <label class="toggle">
+          <input id="has-solar" type="checkbox" checked /> Solar
+        </label>
+        <div class="ctrl" id="solar-ctrls">
+          <label>Solar <span class="v" id="v-solar"></span></label>
+          <input id="solar" type="range" min="0" max="8000" step="50" value="3200" />
+        </div>
+        <hr />
+
+        <label class="toggle">
+          <input id="has-battery" type="checkbox" checked /> Battery
+        </label>
+        <div class="ctrl" id="battery-ctrls">
+          <label>Battery (− charge / + discharge) <span class="v" id="v-battery"></span></label>
+          <input id="battery" type="range" min="-5000" max="5000" step="50" value="-1200" />
+          <label style="margin-top: 10px">SoC <span class="v" id="v-soc"></span></label>
+          <input id="soc" type="range" min="0" max="100" step="1" value="68" />
+        </div>
+
+        <label class="toggle">
+          <input id="has-wallbox" type="checkbox" checked /> Wallbox (below house)
+        </label>
+        <div class="ctrl" id="wallbox-ctrls">
+          <label>Wallbox <span class="v" id="v-wallbox"></span></label>
+          <input id="wallbox" type="range" min="0" max="11000" step="100" value="0" />
+        </div>
+
+        <label class="toggle">
+          <input id="has-wallbox2" type="checkbox" checked /> Wallbox 2 (above house)
+        </label>
+        <div class="ctrl" id="wallbox2-ctrls">
+          <label>Wallbox 2 <span class="v" id="v-wallbox2"></span></label>
+          <input id="wallbox2" type="range" min="0" max="11000" step="100" value="3600" />
+        </div>
+
+        <hr />
+
+        <div class="section-title">Ring colors</div>
+        <div class="colors">
+          <label>Home <input type="color" id="c-home" value="#43a047" /></label>
+          <label>Grid import <input type="color" id="c-grid-in" value="#1e88e5" /></label>
+          <label>Solar <input type="color" id="c-solar" value="#fb8c00" /></label>
+          <label>Grid export <input type="color" id="c-grid-out" value="#e53935" /></label>
+          <label>Battery <input type="color" id="c-battery" value="#8e24aa" /></label>
+          <label>Wallbox <input type="color" id="c-wallbox" value="#00acc1" /></label>
+          <label>Wallbox 2 <input type="color" id="c-wallbox2" value="#00897b" /></label>
+        </div>
+
+        <div class="row">
+          <button id="simulate">▶ Simulate day</button>
+          <button id="theme">Toggle labels (DE)</button>
+          <button id="reset-colors">Reset colors</button>
+        </div>
+      </div>
+
+      <div class="card diagram-card resize">
+        <power-flow id="diagram"></power-flow>
+        <span class="resize-hint">⤡ drag corner to resize</span>
+      </div>
+    </div>
+
+    <script type="module">
+      // Pulls in src/index.ts, which registers <power-flow>.
+      import "./src/index.ts";
+
+      const el = document.getElementById("diagram");
+      const ids = ["solar", "grid", "load", "battery", "soc", "wallbox", "wallbox2"];
+      const inp = Object.fromEntries(ids.map((id) => [id, document.getElementById(id)]));
+      const hasSolar = document.getElementById("has-solar");
+      const hasBat = document.getElementById("has-battery");
+      const hasWb = document.getElementById("has-wallbox");
+      const hasWb2 = document.getElementById("has-wallbox2");
+
+      const fmt = (w) => (Math.abs(w) >= 1000 ? (w / 1000).toFixed(1) + " kW" : Math.round(w) + " W");
+
+      function apply() {
+        document.getElementById("v-solar").textContent = fmt(+inp.solar.value);
+        document.getElementById("v-grid").textContent = fmt(+inp.grid.value);
+        document.getElementById("v-load").textContent = fmt(+inp.load.value);
+        document.getElementById("v-battery").textContent = fmt(+inp.battery.value);
+        document.getElementById("v-soc").textContent = inp.soc.value + " %";
+        document.getElementById("v-wallbox").textContent = fmt(+inp.wallbox.value);
+        document.getElementById("v-wallbox2").textContent = fmt(+inp.wallbox2.value);
+        document.getElementById("solar-ctrls").style.opacity = hasSolar.checked ? "1" : "0.4";
+        document.getElementById("battery-ctrls").style.opacity = hasBat.checked ? "1" : "0.4";
+        document.getElementById("wallbox-ctrls").style.opacity = hasWb.checked ? "1" : "0.4";
+        document.getElementById("wallbox2-ctrls").style.opacity = hasWb2.checked ? "1" : "0.4";
+
+        // This object is the entire public API surface for data.
+        el.data = {
+          solar: hasSolar.checked ? +inp.solar.value : null,
+          grid: +inp.grid.value,
+          load: +inp.load.value,
+          battery: hasBat.checked ? +inp.battery.value : null,
+          batterySoc: hasBat.checked ? +inp.soc.value : null,
+          wallbox: hasWb.checked ? +inp.wallbox.value : null,
+          wallbox2: hasWb2.checked ? +inp.wallbox2.value : null,
+        };
+      }
+
+      [...Object.values(inp), hasSolar, hasBat, hasWb, hasWb2].forEach((i) =>
+        i.addEventListener("input", apply),
+      );
+      apply();
+
+      // Ring colors → the `colors` prop. Keys match the FlowColors interface.
+      const colorIds = {
+        solar: "c-solar",
+        home: "c-home",
+        gridIn: "c-grid-in",
+        gridOut: "c-grid-out",
+        battery: "c-battery",
+        wallbox: "c-wallbox",
+        wallbox2: "c-wallbox2",
+      };
+      const cinp = Object.fromEntries(
+        Object.entries(colorIds).map(([k, id]) => [k, document.getElementById(id)]),
+      );
+      const DEFAULT_COLORS = Object.fromEntries(
+        Object.entries(cinp).map(([k, i]) => [k, i.defaultValue]),
+      );
+
+      function applyColors() {
+        el.colors = Object.fromEntries(
+          Object.entries(cinp).map(([k, i]) => [k, i.value]),
+        );
+      }
+      Object.values(cinp).forEach((i) => i.addEventListener("input", applyColors));
+      applyColors();
+
+      document.getElementById("reset-colors").addEventListener("click", () => {
+        for (const [k, i] of Object.entries(cinp)) i.value = DEFAULT_COLORS[k];
+        applyColors();
+      });
+
+      // Labels demo (works the same as React/Angular passing a `labels` prop).
+      let de = false;
+      document.getElementById("theme").addEventListener("click", () => {
+        de = !de;
+        el.labels = de
+          ? { solar: "Solar", grid: "Netz", home: "Haus", battery: "Akku", wallbox: "Wallbox", wallbox2: "Wallbox 2" }
+          : undefined;
+      });
+
+      // Simulate a sunny day: sunrise→sunset over ~60s, one calm update/second
+      // (like a real dashboard polling) so values drift instead of flickering.
+      let timer = null;
+      const btn = document.getElementById("simulate");
+      const DAY_SECONDS = 60;
+      const TICK_MS = 1000;
+      const tInc = Math.PI / (DAY_SECONDS * 1000 / TICK_MS); // sunrise=0 → sunset=π
+
+      btn.addEventListener("click", () => {
+        if (timer) {
+          clearInterval(timer);
+          timer = null;
+          btn.classList.remove("on");
+          btn.textContent = "▶ Simulate day";
+          return;
+        }
+        btn.classList.add("on");
+        btn.textContent = "⏸ Stop";
+        let t = 0;
+        timer = setInterval(() => {
+          t += tInc;
+          const sun = Math.max(0, Math.sin(t)) ** 1.4; // 0..1 bell curve
+          const solar = hasSolar.checked ? Math.round(7000 * sun) : 0;
+          // Wallboxes charge cars around midday; they're part of the house load.
+          const wallbox = hasWb.checked && sun > 0.55 ? 7400 : 0;
+          const wallbox2 = hasWb2.checked && sun > 0.35 ? 3600 : 0;
+          const baseLoad = Math.round(700 + 500 * Math.abs(Math.sin(t))); // house
+          const load = baseLoad + wallbox + wallbox2; // total shown on "Home"
+          // Battery soaks up surplus, covers deficit (capped at ±4 kW).
+          const net = solar - load; // + surplus / − deficit
+          const battery = hasBat.checked ? Math.max(-4000, Math.min(4000, -net)) : 0;
+          // Energy balance: grid = load − solar − battery = −net − battery.
+          // (+ = import covers the rest, − = export of the surplus.)
+          const grid = -net - battery;
+
+          inp.solar.value = solar;
+          inp.load.value = load;
+          inp.wallbox.value = wallbox;
+          inp.wallbox2.value = wallbox2;
+          inp.battery.value = battery;
+          inp.grid.value = grid;
+          inp.soc.value = Math.round(50 + 40 * Math.sin(t - 1));
+          apply();
+          if (t > Math.PI) t = 0; // one day done → loop
+        }, TICK_MS);
+      });
+    </script>
+  </body>
+</html>

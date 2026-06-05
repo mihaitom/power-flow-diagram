@@ -1,0 +1,48 @@
+{
+  "name": "powerflow",
+  "version": "0.1.0",
+  "description": "Animated, framework-agnostic SVG energy-flow diagram — solar, grid, home, battery and wallbox with power-proportional flow animation. Ships as a <power-flow> Web Component and a vanilla API; works with React, Angular, Vue or plain HTML.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Thomas Mihailovits",
+  "keywords": [
+    "solar",
+    "photovoltaic",
+    "energy",
+    "power-flow",
+    "svg",
+    "diagram",
+    "web-component",
+    "custom-element",
+    "framework-agnostic",
+    "react",
+    "angular",
+    "vue"
+  ],
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/powerflow.umd.cjs",
+  "module": "./dist/powerflow.js",
+  "types": "./dist/index.d.ts",
+  "unpkg": "./dist/powerflow.umd.cjs",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/powerflow.js",
+      "require": "./dist/powerflow.umd.cjs"
+    }
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && tsc --declaration --emitDeclarationOnly -p tsconfig.build.json",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@mdi/js": "^7.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "vite": "^5.2.0"
+  }
+}
