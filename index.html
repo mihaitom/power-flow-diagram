@@ -179,6 +179,10 @@
           <button id="languageBtn">Toggle labels (DE)</button>
           <button id="reset-colors">Reset colors</button>
         </div>
+        
+        <hr />
+        <div class="section-title">Test cases</div>
+        <div class="row" id="testcases"></div>
       </div>
 
       <div class="card diagram-card resize">
@@ -326,6 +330,44 @@
           if (t > Math.PI) t = 0; // one day done → loop
         }, TICK_MS);
       });
+
+      const stopSim = () => {
+        if (!timer) return;
+        clearInterval(timer);
+        timer = null;
+        btn.classList.remove("on");
+        btn.textContent = "▶ Simulate day";
+      };
+
+      // Test-case buttons — load a full scenario into the controls. These are the
+      // same cases used to validate the flow math against power-flow-card-plus.
+      // Wallboxes are switched off so the solar/battery/grid split is easy to read.
+      const testCases = [
+        { label: "Charge + import", solar: 1000, load: 1000, battery: -100, grid: 100 },
+        { label: "Discharge + import", solar: 0, load: 2000, battery: 800, grid: 1200 },
+        { label: "Charge + export", solar: 5000, load: 2000, battery: -1000, grid: -2000 },
+        { label: "Discharge + export", solar: 5000, load: 1000, battery: 1000, grid: -5000 },
+        { label: "Night (grid only)", solar: 0, load: 1500, battery: 0, grid: 1500 },
+        { label: "Grid + Battery", solar: 0, load: 1500, battery: 500, grid: 1000 },
+      ];
+      const tcRow = document.getElementById("testcases");
+      for (const tc of testCases) {
+        const b = document.createElement("button");
+        b.textContent = tc.label;
+        b.addEventListener("click", () => {
+          stopSim();
+          hasSolar.checked = true;
+          hasBat.checked = true;
+          hasWb.checked = false;
+          hasWb2.checked = false;
+          inp.solar.value = tc.solar;
+          inp.load.value = tc.load;
+          inp.battery.value = tc.battery;
+          inp.grid.value = tc.grid;
+          apply();
+        });
+        tcRow.appendChild(b);
+      }
     </script>
   </body>
 </html>

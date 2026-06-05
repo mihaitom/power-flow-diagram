@@ -362,13 +362,19 @@ export class PowerFlow {
     // ── Flow allocation ──────────────────────────────────────────────
     // Each source (solar, battery, grid) is split across the sinks it feeds,
     // by priority, so every leg carries the power actually on it — the dot
-    // speeds and home arcs all stay mutually consistent and never double-count
-    // a shared meter (e.g. one export split between solar and battery).
+    // speeds and home arcs stay mutually consistent and never double-count a
+    // shared meter (e.g. one export split between solar and battery). Matches
+    // the convention of Home Assistant's power-flow-card-plus.
     //
-    //   1. Solar serves the house first (self-consumption),
-    //   2. surplus solar charges the battery, then exports;
-    //   3. the battery covers the house's remaining demand, then exports;
+    //   1. A charging battery is fed from solar first (the rest from the grid),
+    //   2. remaining solar serves the house, then exports;
+    //   3. a discharging battery covers the house's remaining demand, then
+    //      exports;
     //   4. the grid covers whatever the house still needs.
+    //
+    // Charging the battery before serving the house is what makes the tricky
+    // case work — e.g. solar 1000, load 1000, battery charging 100, grid +100:
+    // solar→battery 100, solar→home 900, grid→home 100 (not a lone solar→home).
     //
     // `load` is the total house consumption; the wallbox is a sub-consumer of
     // it (drawn as a separate leg), not an extra load on top.
@@ -377,13 +383,14 @@ export class PowerFlow {
     const batteryDischarge = Math.max(batteryWatts, 0);
     const batteryCharge = Math.max(-batteryWatts, 0);
 
-    const solarToHome = Math.min(solarP, load);
+    const solarToBattery = Math.min(batteryCharge, solarP);
+    // grid → battery (batteryCharge − solarToBattery) has no path, so it isn't drawn.
+
+    const solarLeft = solarP - solarToBattery;
+    const solarToHome = Math.min(solarLeft, load);
+    const solarToGrid = solarLeft - solarToHome;
+
     const homeRemaining = load - solarToHome;
-    const solarSurplus = solarP - solarToHome;
-
-    const solarToBattery = Math.min(solarSurplus, batteryCharge);
-    const solarToGrid = solarSurplus - solarToBattery;
-
     const batToHome = Math.min(batteryDischarge, homeRemaining);
     const batToGrid = batteryDischarge - batToHome;
 

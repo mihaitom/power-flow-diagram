@@ -135,7 +135,15 @@ Defaults are English. Override per language, e.g.
 
 ```bash
 npm install
-npm run dev   # open the printed URL — live sliders + "simulate day"
+npm run dev   # open the printed URL — sliders, test-case buttons, "simulate day"
+```
+
+## Build
+
+```bash
+npm run build        # both of the below
+npm run build:lib    # → dist/      the publishable library (JS bundles + .d.ts)
+npm run build:site   # → dist-site/ the static playground (e.g. for GitHub Pages)
 ```
 
 ## License
