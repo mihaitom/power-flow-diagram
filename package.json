@@ -5,6 +5,14 @@
   "type": "module",
   "license": "MIT",
   "author": "Thomas Mihailovits",
+  "homepage": "https://mihaitom.github.io/power-flow-diagram/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mihaitom/power-flow-diagram.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mihaitom/power-flow-diagram/issues"
+  },
   "keywords": [
     "solar",
     "photovoltaic",
@@ -38,7 +46,8 @@
     "build": "npm run build:lib && npm run build:site",
     "build:lib": "vite build -c vite.config.lib.ts && tsc --declaration --emitDeclarationOnly -p tsconfig.build.json",
     "build:site": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "prepublishOnly": "npm run build:lib"
   },
   "dependencies": {
     "@mdi/js": "^7.0.0"
