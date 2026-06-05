@@ -47,12 +47,14 @@
     "build:lib": "vite build -c vite.config.lib.ts && tsc --declaration --emitDeclarationOnly -p tsconfig.build.json",
     "build:site": "vite build",
     "preview": "vite preview",
-    "prepublishOnly": "npm run build:lib"
+    "prepublishOnly": "npm run build:lib",
+    "capture:gif": "node scripts/capture-gif.cjs"
   },
   "dependencies": {
     "@mdi/js": "^7.0.0"
   },
   "devDependencies": {
+    "puppeteer-core": "^22.0.0",
     "typescript": "^5.4.0",
     "vite": "^5.2.0"
   }

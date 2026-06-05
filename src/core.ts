@@ -250,10 +250,10 @@ const SKELETON = `
     <circle cx="200" cy="310" r="52" class="node-bg" id="bat-bg" />
     <circle id="bat-soc-arc" cx="200" cy="310" r="47" class="home-arc" transform="rotate(-90 200 310)" />
     <circle cx="200" cy="310" r="52" class="node-ring" id="bat-ring" />
-    <path id="bat-icon" transform="${iconTransform(200, 290, 28)}" d="${mdiBatteryMedium}" />
-    <text x="200" y="323" class="val-text" id="t-bat-soc"></text>
-    <text x="200" y="336" class="val-text" id="t-bat-watts" style="font-size: 11px; opacity: 0.75"></text>
-    <text x="200" y="349" class="lbl-text" id="t-bat-lbl"></text>
+    <path id="bat-icon" transform="${iconTransform(200, 283, 28)}" d="${mdiBatteryMedium}" />
+    <text x="200" y="315" class="val-text" id="t-bat-soc"></text>
+    <text x="200" y="328" class="val-text" id="t-bat-watts" style="font-size: 11px; opacity: 0.75"></text>
+    <text x="200" y="341" class="lbl-text" id="t-bat-lbl"></text>
   </g>
 
   <!-- ── Wallbox (below the house, optional) ── -->
