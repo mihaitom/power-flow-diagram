@@ -12,14 +12,22 @@
  *   --fps <n>          Output GIF framerate (default: 30)
  *   --out <path>       Output file (default: docs/preview.gif)
  *
- * Requires: puppeteer-core (devDependency), python3, ffmpeg, /usr/bin/chromium
- * Automatically builds the site and starts/stops a local HTTP server.
+ * Requires: python3, ffmpeg, chromium at /usr/bin/chromium
+ * puppeteer-core is installed automatically on first run (not in package.json
+ * so CI stays lean — only needed locally for GIF generation).
  */
 
+const { execSync } = require('child_process');
+
+// Auto-install puppeteer-core if not present (keeps it out of package.json)
+try { require('puppeteer-core'); } catch {
+  console.log('Installing puppeteer-core (one-time)…');
+  execSync('npm install --no-save puppeteer-core', { stdio: 'inherit' });
+}
 const puppeteer = require('puppeteer-core');
 const fs = require('fs');
 const path = require('path');
-const { execSync, spawn } = require('child_process');
+const { spawn } = require('child_process');
 
 // ── CLI args ──────────────────────────────────────────────────────────────────
 const args = process.argv.slice(2);
