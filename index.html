@@ -43,15 +43,12 @@
         border: 1px solid var(--line);
         border-radius: 14px;
         padding: 18px;
-
       }
       .resize {
         resize: both;
         overflow: auto;
       }
       power-flow { color: var(--fg); }
-      /* The diagram card fills its content box with the diagram, so resizing
-         the card's height (not just width) re-fits the diagram. */
       .diagram-card { position: relative; overflow: hidden; }
       .diagram-card > #diagram { width: 100%; height: 100%; }
       .resize-hint {
@@ -63,6 +60,19 @@
         pointer-events: none;
         user-select: none;
       }
+      @media (max-width: 680px) {
+        body { padding: 12px; }
+        h1 { font-size: 18px; }
+        p.sub { margin-bottom: 16px; font-size: 13px; }
+        .layout {
+          grid-template-columns: 1fr;
+        }
+        /* diagram on top, controls below */
+        .diagram-card { order: -1; aspect-ratio: 1 / 1; resize: none; }
+        .resize-hint { display: none; }
+        .colors { grid-template-columns: 1fr; }
+        button { padding: 9px 12px; } /* bigger tap targets */
+      }
       .ctrl { margin-bottom: 16px; }
       .ctrl label {
         display: flex;
@@ -73,7 +83,14 @@
       .ctrl label .v { color: var(--muted); font-variant-numeric: tabular-nums; }
       input[type="range"] { width: 100%; accent-color: #fb8c00; }
       .toggle { display: flex; align-items: center; gap: 8px; font-weight: 600; margin-bottom: 12px; }
-      .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+      .row { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 6px; margin-top: 8px; }
+      #testcases {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 6px;
+        margin-top: 8px;
+      }
+      #testcases button:last-child:nth-child(odd) { grid-column: 1 / -1; }
       button {
         font: inherit;
         font-weight: 600;
@@ -141,8 +158,8 @@
         <div class="ctrl" id="battery-ctrls">
           <label>Battery (− charge / + discharge) <span class="v" id="v-battery"></span></label>
           <input id="battery" type="range" min="-5000" max="5000" step="50" value="-1200" />
-          <label style="margin-top: 10px">SoC <span class="v" id="v-soc"></span></label>
-          <input id="soc" type="range" min="0" max="100" step="1" value="68" />
+          <label style="margin-top: 10px">State of Charge (SOC)  <span class="v" id="v-soc"></span></label>
+          <input id="soc" type="range" min="0" max="100" step="1" value="69" />
         </div>
 
         <label class="toggle">
@@ -165,14 +182,17 @@
 
         <div class="section-title">Ring colors</div>
         <div class="colors">
-          <label>Home <input type="color" id="c-home" value="#43a047" /></label>
-          <label>Grid import <input type="color" id="c-grid-in" value="#1e88e5" /></label>
-          <label>Solar <input type="color" id="c-solar" value="#fb8c00" /></label>
-          <label>Grid export <input type="color" id="c-grid-out" value="#e53935" /></label>
-          <label>Battery <input type="color" id="c-battery" value="#8e24aa" /></label>
-          <label>Wallbox <input type="color" id="c-wallbox" value="#00acc1" /></label>
-          <label>Wallbox 2 <input type="color" id="c-wallbox2" value="#00897b" /></label>
+          <label>Home <input type="color" id="c-home" value="#818cf8" /></label>
+          <label>Grid import <input type="color" id="c-grid-in" value="#60a5fa" /></label>
+          <label>Solar <input type="color" id="c-solar" value="#fcd34d" /></label>
+          <label>Grid export <input type="color" id="c-grid-out" value="#f472b6" /></label>
+          <label>Battery charge <input type="color" id="c-battery-in" value="#4ade80" /></label>
+          <label>Wallbox <input type="color" id="c-wallbox" value="#22d3ee" /></label>
+          <label>Battery discharge <input type="color" id="c-battery-out" value="#fb923c" /></label>
+          <label>Wallbox 2 <input type="color" id="c-wallbox2" value="#2dd4bf" /></label>
         </div>
+
+        <hr />
 
         <div class="row">
           <button id="simulate">▶ Simulate day</button>
@@ -241,7 +261,8 @@
         home: "c-home",
         gridIn: "c-grid-in",
         gridOut: "c-grid-out",
-        battery: "c-battery",
+        batteryIn: "c-battery-in",
+        batteryOut: "c-battery-out",
         wallbox: "c-wallbox",
         wallbox2: "c-wallbox2",
       };
@@ -342,13 +363,23 @@
       // Test-case buttons — load a full scenario into the controls. These are the
       // same cases used to validate the flow math against power-flow-card-plus.
       // Wallboxes are switched off so the solar/battery/grid split is easy to read.
+      // null = node hidden; values are in watts; load must be >= sum of wallboxes.
+      // Energy balance check: grid = load − solar − battery (positive=import, negative=export).
       const testCases = [
-        { label: "Charge + import", solar: 1000, load: 1000, battery: -100, grid: 100 },
-        { label: "Discharge + import", solar: 0, load: 2000, battery: 800, grid: 1200 },
-        { label: "Charge + export", solar: 5000, load: 2000, battery: -1000, grid: -2000 },
-        { label: "Discharge + export", solar: 5000, load: 1000, battery: 1000, grid: -5000 },
-        { label: "Night (grid only)", solar: 0, load: 1500, battery: 0, grid: 1500 },
-        { label: "Grid + Battery", solar: 0, load: 1500, battery: 500, grid: 1000 },
+        // solar=5000, bat charges 1500, house 1500, grid exports 2000
+        { label: "Solar day",         solar: 5000, load: 1500,  battery: -1500, grid: -2000, wallbox: null, wallbox2: null },
+        // solar=8000 powers house+EV(6400) and exports 1000, no battery
+        { label: "Solar + EV",        solar: 8000, load: 7000,  battery:  null, grid: -1000, wallbox: 6400, wallbox2: null },
+        // two EVs + battery discharge, heavy grid import
+        { label: "2 EVs",             solar: 3000, load: 8000,  battery:  1000, grid:  4000, wallbox: 3600, wallbox2: 3600 },
+        // night: battery covers 800 W, grid covers 1200 W
+        { label: "Night: bat + grid", solar: 0, load: 2000,  battery:   800, grid:  1200, wallbox: null, wallbox2: null },
+        // night EV: bat+grid charge car
+        { label: "Night EV",          solar: 0, load: 3000,  battery:   500, grid:  2500, wallbox: 2200, wallbox2: null },
+        // grid charges battery (no solar)
+        { label: "Grid→Battery",      solar: 0, load: 1000,  battery:  -500, grid:  1500, wallbox: null, wallbox2: null },
+        // bare minimum: grid only, no optional nodes
+        { label: "Grid only",         solar: null, load: 1500,  battery:  null, grid:  1500, wallbox: null, wallbox2: null },
       ];
       const tcRow = document.getElementById("testcases");
       for (const tc of testCases) {
@@ -356,14 +387,16 @@
         b.textContent = tc.label;
         b.addEventListener("click", () => {
           stopSim();
-          hasSolar.checked = true;
-          hasBat.checked = true;
-          hasWb.checked = false;
-          hasWb2.checked = false;
-          inp.solar.value = tc.solar;
-          inp.load.value = tc.load;
-          inp.battery.value = tc.battery;
-          inp.grid.value = tc.grid;
+          hasSolar.checked = tc.solar !== null;
+          hasBat.checked   = tc.battery !== null;
+          hasWb.checked    = tc.wallbox !== null;
+          hasWb2.checked   = tc.wallbox2 !== null;
+          inp.solar.value   = tc.solar   ?? 0;
+          inp.load.value    = tc.load;
+          inp.battery.value = tc.battery ?? 0;
+          inp.grid.value    = tc.grid;
+          inp.wallbox.value  = tc.wallbox  ?? 0;
+          inp.wallbox2.value = tc.wallbox2 ?? 0;
           apply();
         });
         tcRow.appendChild(b);
