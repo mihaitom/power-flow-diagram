@@ -152,7 +152,14 @@ const CSS = `
   opacity: 0.15;
 }
 
-.dot { stroke-width: 4; }
+.dot {
+  stroke-width: 4;
+  transition: r 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.dot.shrunk {
+  r: 0;
+  transition: r 0.18s ease-in;
+}
 .dot.solar { fill: var(--sfd-solar); stroke: var(--sfd-solar); }
 .dot.grid { fill: var(--sfd-grid-in); stroke: var(--sfd-grid-in); }
 .dot.return { fill: var(--sfd-grid-out); stroke: var(--sfd-grid-out); }
@@ -161,8 +168,10 @@ const CSS = `
 .dot.wallbox { fill: var(--sfd-wallbox); stroke: var(--sfd-wallbox); }
 .dot.wallbox2 { fill: var(--sfd-wallbox2); stroke: var(--sfd-wallbox2); }
 
-.node-bg { stroke: none; }
-.node-ring { fill: none; stroke-width: 2.5; }
+.node { transition: opacity 0.35s ease; }
+.node-bg { stroke: none; transition: fill 0.35s ease; }
+.node-ring { fill: none; stroke-width: 2.5; transition: stroke 0.35s ease; }
+.node-icon { transition: fill 0.35s ease; }
 .node.dim { opacity: 0.3; }
 
 .home-arc {
@@ -235,7 +244,7 @@ const SKELETON = `
   <g id="n-solar" class="node" data-topo="solar">
     <circle cx="200" cy="60" r="52" class="node-bg" id="solar-bg" />
     <circle cx="200" cy="60" r="52" class="node-ring" id="solar-ring" />
-    <path id="solar-icon" transform="${iconTransform(200, 42, 28)}" d="${mdiSolarPowerVariant}" />
+    <path id="solar-icon" class="node-icon" transform="${iconTransform(200, 42, 28)}" d="${mdiSolarPowerVariant}" />
     <text x="200" y="76" class="val-text" id="t-solar-val"></text>
     <text x="200" y="89" class="lbl-text" id="t-solar-lbl"></text>
   </g>
@@ -244,7 +253,7 @@ const SKELETON = `
   <g class="node">
     <circle cx="55" cy="185" r="52" class="node-bg" id="grid-bg" />
     <circle cx="55" cy="185" r="52" class="node-ring" id="grid-ring" />
-    <path id="grid-icon" transform="${iconTransform(55, 167, 28)}" d="${mdiTransmissionTower}" />
+    <path id="grid-icon" class="node-icon" transform="${iconTransform(55, 167, 28)}" d="${mdiTransmissionTower}" />
     <text x="55" y="201" class="val-text" id="t-grid-val"></text>
     <text x="55" y="214" class="lbl-text" id="t-grid-lbl"></text>
   </g>
@@ -253,7 +262,7 @@ const SKELETON = `
   <g class="node">
     <circle cx="345" cy="185" r="52" class="node-bg" id="home-bg" />
     <circle cx="345" cy="185" r="52" class="node-ring" id="home-ring" />
-    <path id="home-icon" transform="${iconTransform(345, 167, 28)}" d="${mdiHome}" />
+    <path id="home-icon" class="node-icon" transform="${iconTransform(345, 167, 28)}" d="${mdiHome}" />
     <text x="345" y="201" class="val-text" id="t-home-val"></text>
     <text x="345" y="214" class="lbl-text" id="t-home-lbl"></text>
   </g>
@@ -262,7 +271,7 @@ const SKELETON = `
   <g id="n-wallbox2" class="node" data-topo="wallbox2">
     <circle cx="345" cy="60" r="52" class="node-bg" id="wb2-bg" />
     <circle cx="345" cy="60" r="52" class="node-ring" id="wb2-ring" />
-    <path id="wb2-icon" transform="${iconTransform(345, 42, 28)}" d="${mdiEvStation}" />
+    <path id="wb2-icon" class="node-icon" transform="${iconTransform(345, 42, 28)}" d="${mdiEvStation}" />
     <text x="345" y="76" class="val-text" id="t-wb2-val"></text>
     <text x="345" y="89" class="lbl-text" id="t-wb2-lbl"></text>
   </g>
@@ -272,7 +281,7 @@ const SKELETON = `
     <circle cx="200" cy="310" r="52" class="node-bg" id="bat-bg" />
     <circle id="bat-soc-arc" cx="200" cy="310" r="47" class="home-arc" transform="rotate(-90 200 310)" />
     <circle cx="200" cy="310" r="52" class="node-ring" id="bat-ring" />
-    <path id="bat-icon" transform="${iconTransform(200, 283, 28)}" d="${mdiBatteryMedium}" />
+    <path id="bat-icon" class="node-icon" transform="${iconTransform(200, 283, 28)}" d="${mdiBatteryMedium}" />
     <text x="200" y="315" class="val-text" id="t-bat-soc"></text>
     <text x="200" y="328" class="val-text" id="t-bat-watts" style="font-size: 11px; opacity: 0.75"></text>
     <text x="200" y="341" class="lbl-text" id="t-bat-lbl"></text>
@@ -282,7 +291,7 @@ const SKELETON = `
   <g id="n-wallbox" class="node" data-topo="wallbox">
     <circle cx="345" cy="310" r="52" class="node-bg" id="wb-bg" />
     <circle cx="345" cy="310" r="52" class="node-ring" id="wb-ring" />
-    <path id="wb-icon" transform="${iconTransform(345, 290, 28)}" d="${mdiEvStation}" />
+    <path id="wb-icon" class="node-icon" transform="${iconTransform(345, 290, 28)}" d="${mdiEvStation}" />
     <text x="345" y="328" class="val-text" id="t-wb-val"></text>
     <text x="345" y="341" class="lbl-text" id="t-wb-lbl"></text>
   </g>
@@ -314,8 +323,10 @@ export class PowerFlow {
       length: number;
       speed: number; // px/s
       visible: boolean;
+      shrinking: boolean; // true while the shrink-out CSS transition plays
       prog: number; // 0..1 along the path
       reverse: boolean; // travel from path end to start
+      hideTimer?: ReturnType<typeof setTimeout>;
     }
   > = {};
   private raf = 0;
@@ -341,12 +352,15 @@ export class PowerFlow {
   private initDots() {
     for (const d of DOTS) {
       const path = this.svg.querySelector<SVGPathElement>(`#${d.path}`)!;
+      const circle = this.el[`dot-${d.id}`] as SVGCircleElement;
+      circle.style.display = 'none';
       this.dots[d.id] = {
-        circle: this.el[`dot-${d.id}`] as SVGCircleElement,
+        circle,
         path,
         length: path.getTotalLength(),
         speed: 0,
         visible: false,
+        shrinking: false,
         prog: Math.random(), // stagger start positions
         reverse: d.reverse ?? false,
       };
@@ -369,7 +383,7 @@ export class PowerFlow {
     this.lastTime = now;
     for (const id in this.dots) {
       const s = this.dots[id];
-      if (!s.visible || s.length === 0) continue;
+      if ((!s.visible && !s.shrinking) || s.length === 0) continue;
       s.prog += (s.speed * dt) / s.length;
       s.prog -= Math.floor(s.prog); // wrap into [0, 1)
       this.placeDot(s);
@@ -533,7 +547,7 @@ export class PowerFlow {
     this.stroke('grid-ring', gridColor);
     this.fill('grid-icon', gridColor);
     const gridVal = this.el['t-grid-val'] as SVGTextElement;
-    gridVal.setAttribute('fill', gridColor);
+    gridVal.style.fill = gridColor;
     gridVal.textContent = `${gridWatts >= 0 ? '→' : '←'} ${formatWatts(Math.abs(gridWatts))}`;
     this.text('t-grid-lbl', labels.grid);
 
@@ -556,12 +570,12 @@ export class PowerFlow {
       if (data.batterySoc != null)
         soc.textContent = `${Math.round(data.batterySoc)} %`;
       const watts = this.el['t-bat-watts'] as SVGTextElement;
-      watts.setAttribute('fill', batteryColor);
+      watts.style.fill = batteryColor;
       watts.textContent = `${batteryWatts >= 0 ? '↑' : '↓'} ${formatWatts(Math.abs(batteryWatts))}`;
       this.text('t-bat-lbl', labels.battery);
       // SoC inner ring — progress arc from 12 o'clock clockwise.
       const socArc = this.el['bat-soc-arc'] as SVGCircleElement;
-      socArc.setAttribute('stroke', batteryColor);
+      socArc.style.stroke = batteryColor;
       const pct =
         data.batterySoc != null
           ? Math.max(0, Math.min(100, data.batterySoc)) / 100
@@ -593,6 +607,9 @@ export class PowerFlow {
   /** Remove the rendered diagram from its host and stop the animation loop. */
   destroy() {
     cancelAnimationFrame(this.raf);
+    for (const s of Object.values(this.dots)) {
+      if (s.hideTimer) clearTimeout(s.hideTimer);
+    }
     this.root.innerHTML = '';
     this.el = {};
     this.dots = {};
@@ -609,11 +626,11 @@ export class PowerFlow {
   }
 
   private fill(id: string, color: string) {
-    this.el[id]?.setAttribute('fill', color);
+    (this.el[id] as SVGElement | undefined)?.style.setProperty('fill', color);
   }
 
   private stroke(id: string, color: string) {
-    this.el[id]?.setAttribute('stroke', color);
+    (this.el[id] as SVGElement | undefined)?.style.setProperty('stroke', color);
   }
 
   private text(id: string, value: string) {
@@ -630,13 +647,31 @@ export class PowerFlow {
   // makes the dot jump back to the start.
   private setDot(id: string, visible: boolean, watts: number) {
     const s = this.dots[id];
-    s.visible = visible;
-    s.circle.style.display = visible ? '' : 'none';
     if (visible) {
       s.speed = this.flowSpeed(watts, s.length);
-      // Place it at its current progress right away so it never flashes at the
-      // SVG origin before the first animation frame positions it.
-      this.placeDot(s);
+      if (!s.visible) {
+        // Pop in: position first, show at scale(0), force reflow, then spring to full size.
+        if (s.hideTimer) { clearTimeout(s.hideTimer); s.hideTimer = undefined; }
+        s.visible = true;
+        s.shrinking = false;
+        this.placeDot(s);
+        s.circle.classList.add('shrunk');
+        s.circle.style.display = '';
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          if (s.visible) s.circle.classList.remove('shrunk');
+        }));
+      }
+    } else if (s.visible) {
+      // Shrink out: keep moving while scaling to 0, then hide after the transition.
+      s.visible = false;
+      s.shrinking = true;
+      s.circle.classList.add('shrunk');
+      s.hideTimer = setTimeout(() => {
+        s.circle.style.display = 'none';
+        s.circle.classList.remove('shrunk');
+        s.shrinking = false;
+        s.hideTimer = undefined;
+      }, 200);
     }
   }
 
