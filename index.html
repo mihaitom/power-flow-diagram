@@ -136,11 +136,11 @@
       <div class="card">
         <div class="ctrl">
           <label>Grid (− export / + import) <span class="v" id="v-grid"></span></label>
-          <input id="grid" type="range" min="-6000" max="6000" step="50" value="-800" />
+          <input id="grid" type="range" min="-6000" max="6000" step="50" value="4000" />
         </div>
         <div class="ctrl">
           <label>Home load <span class="v" id="v-load"></span></label>
-          <input id="load" type="range" min="0" max="8000" step="50" value="2400" />
+          <input id="load" type="range" min="0" max="8000" step="50" value="8000" />
         </div>
         <hr />
         <label class="toggle">
@@ -148,7 +148,7 @@
         </label>
         <div class="ctrl" id="solar-ctrls">
           <label>Solar <span class="v" id="v-solar"></span></label>
-          <input id="solar" type="range" min="0" max="8000" step="50" value="3200" />
+          <input id="solar" type="range" min="0" max="8000" step="50" value="3000" />
         </div>
         <hr />
 
@@ -157,7 +157,7 @@
         </label>
         <div class="ctrl" id="battery-ctrls">
           <label>Battery (− charge / + discharge) <span class="v" id="v-battery"></span></label>
-          <input id="battery" type="range" min="-5000" max="5000" step="50" value="-1200" />
+          <input id="battery" type="range" min="-5000" max="5000" step="50" value="1000" />
           <label style="margin-top: 10px">State of Charge (SOC)  <span class="v" id="v-soc"></span></label>
           <input id="soc" type="range" min="0" max="100" step="1" value="69" />
         </div>
@@ -167,7 +167,7 @@
         </label>
         <div class="ctrl" id="wallbox-ctrls">
           <label>Wallbox <span class="v" id="v-wallbox"></span></label>
-          <input id="wallbox" type="range" min="0" max="11000" step="100" value="0" />
+          <input id="wallbox" type="range" min="0" max="11000" step="100" value="6400" />
         </div>
 
         <label class="toggle">
@@ -175,7 +175,7 @@
         </label>
         <div class="ctrl" id="wallbox2-ctrls">
           <label>Wallbox 2 <span class="v" id="v-wallbox2"></span></label>
-          <input id="wallbox2" type="range" min="0" max="11000" step="100" value="3600" />
+          <input id="wallbox2" type="range" min="0" max="11000" step="100" value="300" />
         </div>
 
         <hr />
@@ -371,7 +371,7 @@
         // solar=8000 powers house+EV(6400) and exports 1000, no battery
         { label: "Solar + EV",        solar: 8000, load: 7000,  battery:  null, grid: -1000, wallbox: 6400, wallbox2: null },
         // two EVs + battery discharge, heavy grid import
-        { label: "2 EVs",             solar: 3000, load: 8000,  battery:  1000, grid:  4000, wallbox: 3600, wallbox2: 3600 },
+        { label: "2 EVs",             solar: 3000, load: 8000,  battery:  1000, grid:  4000, wallbox: 6400, wallbox2: 300 },
         // night: battery covers 800 W, grid covers 1200 W
         { label: "Night: bat + grid", solar: 0, load: 2000,  battery:   800, grid:  1200, wallbox: null, wallbox2: null },
         // night EV: bat+grid charge car
