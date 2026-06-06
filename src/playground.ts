@@ -248,7 +248,7 @@ btn.addEventListener('click', () => {
     updateGrid();
 
     const hour = 6 + p * 14;
-    simTimeEl.textContent = `${String(Math.floor(hour)).padStart(2, '0')}:${String(Math.round((hour % 1) * 60)).padStart(2, '0')} Uhr`;
+    simTimeEl.textContent = `${String(Math.floor(hour)).padStart(2, '0')}:${String(Math.round((hour % 1) * 60)).padStart(2, '0')}`;
     if (t > Math.PI) {
       t = 0;
       soc = 20;
