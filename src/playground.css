@@ -207,6 +207,7 @@ input[type='range'] {
   grid-column: 1 / -1;
   background-color: var(--accent);
   height: 60px;
+  color: #e2e8f0
 }
 button {
   font: inherit;
