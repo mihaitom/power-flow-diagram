@@ -20,7 +20,9 @@
 const { execSync } = require('child_process');
 
 // Auto-install puppeteer-core if not present (keeps it out of package.json)
-try { require('puppeteer-core'); } catch {
+try {
+  require('puppeteer-core');
+} catch {
   console.log('Installing puppeteer-core (one-time)…');
   execSync('npm install --no-save puppeteer-core', { stdio: 'inherit' });
 }
@@ -35,19 +37,19 @@ const get = (flag, def) => {
   const i = args.indexOf(flag);
   return i !== -1 ? args[i + 1] : def;
 };
-const TEST_CASE  = get('--test',     '2 EVs');
+const TEST_CASE = get('--test', '2 EVs');
 const DURATION_S = Number(get('--duration', 3));
-const OUT_FPS    = Number(get('--fps',      30));
-const OUT_FILE   = path.resolve(get('--out', 'docs/preview.gif'));
+const OUT_FPS = Number(get('--fps', 30));
+const OUT_FILE = path.resolve(get('--out', 'docs/preview.gif'));
 
-const ROOT      = path.resolve(__dirname, '..');
+const ROOT = path.resolve(__dirname, '..');
 const DIST_SITE = path.join(ROOT, 'dist-site');
 const SERVE_DIR = path.join(ROOT, 'node_modules/.cache/pf-serve');
-const PORT      = 8081;
-const BASE      = `/power-flow-diagram/`;
-const URL       = `http://localhost:${PORT}${BASE}`;
-const CHROMIUM  = '/usr/bin/chromium';
-const FRAMES    = path.join(ROOT, 'node_modules/.cache/pf-frames');
+const PORT = 8081;
+const BASE = `/power-flow-diagram/`;
+const URL = `http://localhost:${PORT}${BASE}`;
+const CHROMIUM = '/usr/bin/chromium';
+const FRAMES = path.join(ROOT, 'node_modules/.cache/pf-frames');
 
 // ── Step 1: build site ────────────────────────────────────────────────────────
 console.log('Building site…');
@@ -58,10 +60,14 @@ fs.rmSync(SERVE_DIR, { recursive: true, force: true });
 fs.mkdirSync(path.join(SERVE_DIR, 'power-flow-diagram'), { recursive: true });
 execSync(`cp -r ${DIST_SITE}/. ${path.join(SERVE_DIR, 'power-flow-diagram')}/`);
 
-const server = spawn('python3', ['-m', 'http.server', String(PORT), '--directory', SERVE_DIR], {
-  stdio: 'ignore',
-  detached: false,
-});
+const server = spawn(
+  'python3',
+  ['-m', 'http.server', String(PORT), '--directory', SERVE_DIR],
+  {
+    stdio: 'ignore',
+    detached: false,
+  },
+);
 // Give the server a moment to start
 execSync('sleep 0.5');
 
@@ -72,17 +78,25 @@ const run = async () => {
 
   const browser = await puppeteer.launch({
     executablePath: CHROMIUM,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu', '--force-color-profile=srgb'],
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-gpu',
+      '--force-color-profile=srgb',
+    ],
     headless: true,
   });
 
   try {
     const page = await browser.newPage();
-    await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }]);
+    await page.emulateMediaFeatures([
+      { name: 'prefers-color-scheme', value: 'light' },
+    ]);
     await page.setViewport({ width: 500, height: 500, deviceScaleFactor: 1 });
     await page.goto(URL, { waitUntil: 'networkidle0' });
 
-    await page.addStyleTag({ content: `
+    await page.addStyleTag({
+      content: `
       html, body { background: #fff !important; margin: 0; padding: 0 !important; }
       h1, p.sub { display: none !important; }
       .layout { display: block !important; }
@@ -95,27 +109,36 @@ const run = async () => {
         background: #fff !important;
       }
       .resize-hint { display: none !important; }
-    ` });
+    `,
+    });
 
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise((r) => setTimeout(r, 500));
 
     // Click the requested test case
     const clicked = await page.evaluate((label) => {
-      const btn = [...document.querySelectorAll('#testcases button')]
-        .find(b => b.textContent.trim() === label);
-      if (btn) { btn.click(); return true; }
+      const btn = [...document.querySelectorAll('#testcases button')].find(
+        (b) => b.textContent.trim() === label,
+      );
+      if (btn) {
+        btn.click();
+        return true;
+      }
       return false;
     }, TEST_CASE);
     if (!clicked) {
       const available = await page.evaluate(() =>
-        [...document.querySelectorAll('#testcases button')].map(b => b.textContent.trim())
+        [...document.querySelectorAll('#testcases button')].map((b) =>
+          b.textContent.trim(),
+        ),
       );
-      console.error(`Test case "${TEST_CASE}" not found. Available: ${available.join(', ')}`);
+      console.error(
+        `Test case "${TEST_CASE}" not found. Available: ${available.join(', ')}`,
+      );
       process.exit(1);
     }
 
     // Let dots spread out before recording
-    await new Promise(r => setTimeout(r, 1500));
+    await new Promise((r) => setTimeout(r, 1500));
 
     // Start CDP screencast at native frame rate
     const client = await page.createCDPSession();
@@ -127,34 +150,42 @@ const run = async () => {
     });
 
     await client.send('Page.startScreencast', {
-      format: 'png', quality: 90,
-      maxWidth: 460, maxHeight: 460,
+      format: 'png',
+      quality: 90,
+      maxWidth: 460,
+      maxHeight: 460,
       everyNthFrame: 1,
     });
 
     process.stdout.write(`Recording "${TEST_CASE}" for ${DURATION_S}s…`);
-    await new Promise(r => setTimeout(r, DURATION_S * 1000));
+    await new Promise((r) => setTimeout(r, DURATION_S * 1000));
     await client.send('Page.stopScreencast');
-    console.log(` ${captured.length} frames (${(captured.length / DURATION_S).toFixed(0)} fps)`);
+    console.log(
+      ` ${captured.length} frames (${(captured.length / DURATION_S).toFixed(0)} fps)`,
+    );
 
     // Save frames
     const t0 = captured[0].ts;
-    captured.forEach(f => { f.ts -= t0; });
+    captured.forEach((f) => {
+      f.ts -= t0;
+    });
     for (let i = 0; i < captured.length; i++) {
       fs.writeFileSync(
         path.join(FRAMES, `frame-${String(i).padStart(4, '0')}.png`),
-        Buffer.from(captured[i].data, 'base64')
+        Buffer.from(captured[i].data, 'base64'),
       );
     }
 
     // ffconcat with real per-frame durations → correct playback speed
-    const avgDur = captured.length > 1
-      ? (captured[captured.length - 1].ts - captured[0].ts) / (captured.length - 1)
-      : 1000 / 60;
+    const avgDur =
+      captured.length > 1
+        ? (captured[captured.length - 1].ts - captured[0].ts) /
+          (captured.length - 1)
+        : 1000 / 60;
     const lines = ['ffconcat version 1.0'];
     for (let i = 0; i < captured.length; i++) {
-      const durMs = i < captured.length - 1
-        ? captured[i + 1].ts - captured[i].ts : avgDur;
+      const durMs =
+        i < captured.length - 1 ? captured[i + 1].ts - captured[i].ts : avgDur;
       lines.push(`file '${FRAMES}/frame-${String(i).padStart(4, '0')}.png'`);
       lines.push(`duration ${(durMs / 1000).toFixed(4)}`);
     }
@@ -166,15 +197,15 @@ const run = async () => {
     console.log('Building GIF…');
     execSync(
       `ffmpeg -y -f concat -safe 0 -i ${concatFile} ` +
-      `-vf "scale=460:-1:flags=lanczos,palettegen=reserve_transparent=0:stats_mode=diff" ` +
-      `${palette}`,
-      { stdio: 'pipe' }
+        `-vf "scale=460:-1:flags=lanczos,palettegen=reserve_transparent=0:stats_mode=diff" ` +
+        `${palette}`,
+      { stdio: 'pipe' },
     );
     execSync(
       `ffmpeg -y -f concat -safe 0 -i ${concatFile} -i ${palette} ` +
-      `-lavfi "[0:v]scale=460:-1:flags=lanczos,fps=${OUT_FPS}[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle" ` +
-      `${OUT_FILE}`,
-      { stdio: 'pipe' }
+        `-lavfi "[0:v]scale=460:-1:flags=lanczos,fps=${OUT_FPS}[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle" ` +
+        `${OUT_FILE}`,
+      { stdio: 'pipe' },
     );
 
     const kb = (fs.statSync(OUT_FILE).size / 1024).toFixed(0);
@@ -185,5 +216,10 @@ const run = async () => {
 };
 
 run()
-  .catch(e => { console.error(e); process.exitCode = 1; })
-  .finally(() => { server.kill(); });
+  .catch((e) => {
+    console.error(e);
+    process.exitCode = 1;
+  })
+  .finally(() => {
+    server.kill();
+  });

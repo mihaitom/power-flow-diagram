@@ -4,7 +4,7 @@ import {
   mdiHome,
   mdiBatteryMedium,
   mdiEvStation,
-} from "@mdi/js";
+} from '@mdi/js';
 
 /** Live energy readings driving the diagram. All power values are in watts. */
 export interface FlowData {
@@ -50,33 +50,55 @@ export interface FlowLabels {
   wallbox2: string;
 }
 
+/** SVG path string (`mdi*` from @mdi/js or any valid `<path d="">`) for each node icon. */
+export interface FlowIcons {
+  solar: string;
+  grid: string;
+  home: string;
+  battery: string;
+  wallbox: string;
+  wallbox2: string;
+}
+
 export interface PowerFlowOptions {
   data: FlowData;
   colors?: Partial<FlowColors>;
   labels?: Partial<FlowLabels>;
+  icons?: Partial<FlowIcons>;
+  /** Dot speed multiplier. 1 = default, 2 = twice as fast, 0.5 = half speed. */
+  speedScale?: number;
 }
 
 const DEFAULT_COLORS: FlowColors = {
-  solar:     "#fcd34d", // warm amber-yellow — sun
-  home:      "#818cf8", // periwinkle — modern consumption hub
-  gridIn:    "#60a5fa", // sky blue — drawing from the grid
-  gridOut:   "#f472b6", // pink-magenta — feeding back to grid
-  batteryIn: "#4ade80", // lime green — charging (positive)
-  batteryOut:"#fb923c", // orange — discharging (warm energy out)
-  wallbox:   "#22d3ee", // cyan — EV charger 1
-  wallbox2:  "#2dd4bf", // teal — EV charger 2
+  solar: '#fcd34d', // warm amber-yellow — sun
+  home: '#818cf8', // periwinkle — modern consumption hub
+  gridIn: '#60a5fa', // sky blue — drawing from the grid
+  gridOut: '#f472b6', // pink-magenta — feeding back to grid
+  batteryIn: '#4ade80', // lime green — charging (positive)
+  batteryOut: '#fb923c', // orange — discharging (warm energy out)
+  wallbox: '#22d3ee', // cyan — EV charger 1
+  wallbox2: '#2dd4bf', // teal — EV charger 2
 };
 
 const DEFAULT_LABELS: FlowLabels = {
-  solar: "Solar",
-  grid: "Grid",
-  home: "Home",
-  battery: "Battery",
-  wallbox: "Wallbox",
-  wallbox2: "Wallbox 2",
+  solar: 'Solar',
+  grid: 'Grid',
+  home: 'Home',
+  battery: 'Battery',
+  wallbox: 'Wallbox',
+  wallbox2: 'Wallbox 2',
 };
 
-const SVGNS = "http://www.w3.org/2000/svg";
+const DEFAULT_ICONS: FlowIcons = {
+  solar: mdiSolarPowerVariant,
+  grid: mdiTransmissionTower,
+  home: mdiHome,
+  battery: mdiBatteryMedium,
+  wallbox: mdiEvStation,
+  wallbox2: mdiEvStation,
+};
+
+const SVGNS = 'http://www.w3.org/2000/svg';
 
 // Home arc: circumference for r=47 (inner ring of the home circle, r=52).
 const ARC_LENGTH = 2 * Math.PI * 47; // ≈ 295.31
@@ -103,16 +125,16 @@ function tint(color: string): string {
 // animates the dot from the path's end to its start (used to send a dot the
 // opposite way along a path that is shared by two flow directions).
 const DOTS: { id: string; cls: string; path: string; reverse?: boolean }[] = [
-  { id: "solar-home", cls: "solar", path: "p-solar-home" },
-  { id: "solar-grid", cls: "return", path: "p-solar-grid" },
-  { id: "grid-home", cls: "grid", path: "p-grid-home" },
-  { id: "bat-home", cls: "battery-out", path: "p-bat-home" },
-  { id: "bat-grid", cls: "return", path: "p-bat-grid" },
-  { id: "solar-bat", cls: "battery-in", path: "p-solar-bat" },
+  { id: 'solar-home', cls: 'solar', path: 'p-solar-home' },
+  { id: 'solar-grid', cls: 'return', path: 'p-solar-grid' },
+  { id: 'grid-home', cls: 'grid', path: 'p-grid-home' },
+  { id: 'bat-home', cls: 'battery-out', path: 'p-bat-home' },
+  { id: 'bat-grid', cls: 'return', path: 'p-bat-grid' },
+  { id: 'solar-bat', cls: 'battery-in', path: 'p-solar-bat' },
   // Grid → battery shares the battery↔grid path, run in reverse (grid to battery).
-  { id: "grid-bat", cls: "battery-in", path: "p-bat-grid", reverse: true },
-  { id: "home-wallbox", cls: "wallbox", path: "p-home-wallbox" },
-  { id: "home-wallbox2", cls: "wallbox2", path: "p-home-wallbox2" },
+  { id: 'grid-bat', cls: 'battery-in', path: 'p-bat-grid', reverse: true },
+  { id: 'home-wallbox', cls: 'wallbox', path: 'p-home-wallbox' },
+  { id: 'home-wallbox2', cls: 'wallbox2', path: 'p-home-wallbox2' },
 ];
 
 const CSS = `
@@ -195,7 +217,7 @@ const SKELETON = `
   ${DOTS.map(
     (d) =>
       `<circle id="dot-${d.id}" r="2" class="dot ${d.cls}" vector-effect="non-scaling-stroke" />`,
-  ).join("\n  ")}
+  ).join('\n  ')}
 
   <!-- Coverage rings, drawn under the node bodies. The home ring shows how
        the load is sourced (solar/battery/grid); the grid ring shows how an
@@ -277,6 +299,8 @@ export class PowerFlow {
   private el: Record<string, Element> = {};
   private colors: FlowColors = DEFAULT_COLORS;
   private labels: FlowLabels = DEFAULT_LABELS;
+  private icons: FlowIcons = { ...DEFAULT_ICONS };
+  private speedScale = 1;
 
   // Per-dot animation state. We drive the dots ourselves (requestAnimationFrame)
   // instead of SMIL so a speed change keeps each dot's position continuous —
@@ -298,9 +322,9 @@ export class PowerFlow {
   private lastTime = 0;
 
   constructor(host: HTMLElement, options: PowerFlowOptions) {
-    this.root = host.shadowRoot ?? host.attachShadow({ mode: "open" });
+    this.root = host.shadowRoot ?? host.attachShadow({ mode: 'open' });
     this.root.innerHTML = `<style>${CSS}</style>${SKELETON}`;
-    this.svg = this.root.querySelector("svg")!;
+    this.svg = this.root.querySelector('svg')!;
     this.cacheRefs();
     this.initDots();
     this.update(options);
@@ -309,7 +333,7 @@ export class PowerFlow {
   }
 
   private cacheRefs() {
-    this.svg.querySelectorAll<Element>("[id]").forEach((node) => {
+    this.svg.querySelectorAll<Element>('[id]').forEach((node) => {
       this.el[node.id] = node;
     });
   }
@@ -330,11 +354,11 @@ export class PowerFlow {
   }
 
   // Position along the path for a dot's current progress, honouring `reverse`.
-  private placeDot(s: PowerFlow["dots"][string]) {
+  private placeDot(s: PowerFlow['dots'][string]) {
     const at = s.reverse ? 1 - s.prog : s.prog;
     const p = s.path.getPointAtLength(at * s.length);
-    s.circle.setAttribute("cx", String(p.x));
-    s.circle.setAttribute("cy", String(p.y));
+    s.circle.setAttribute('cx', String(p.x));
+    s.circle.setAttribute('cy', String(p.y));
   }
 
   // Single animation loop for all dots. Advances each visible dot along its path
@@ -353,7 +377,7 @@ export class PowerFlow {
     this.raf = requestAnimationFrame(this.tick);
   };
 
-  /** Re-render with new data / colors / labels. Cheap to call frequently. */
+  /** Re-render with new data / colors / labels / icons / speedScale. Cheap to call frequently. */
   update(options: PowerFlowOptions) {
     const data = options.data;
     if (options.colors !== undefined) {
@@ -362,7 +386,20 @@ export class PowerFlow {
     if (options.labels !== undefined) {
       this.labels = { ...DEFAULT_LABELS, ...options.labels };
     }
-    const { colors, labels } = this;
+    if (options.icons !== undefined) {
+      this.icons = { ...DEFAULT_ICONS, ...options.icons };
+    }
+    if (options.speedScale !== undefined) {
+      this.speedScale = options.speedScale;
+    }
+    const { colors, labels, icons } = this;
+
+    this.setIconPath('solar-icon', icons.solar);
+    this.setIconPath('grid-icon', icons.grid);
+    this.setIconPath('home-icon', icons.home);
+    this.setIconPath('bat-icon', icons.battery);
+    this.setIconPath('wb-icon', icons.wallbox);
+    this.setIconPath('wb2-icon', icons.wallbox2);
 
     const solarWatts = data.solar ?? 0;
     const gridWatts = data.grid ?? 0;
@@ -423,7 +460,7 @@ export class PowerFlow {
     const minY = hasTop ? 0 : 125; // middle row (cy 185, edge 133) − 8 margin
     const maxY = hasBottom ? 370 : 245; // battery edge 362 / home edge 237 + 8
     const height = maxY - minY;
-    this.svg.setAttribute("viewBox", `0 ${minY} 400 ${height}`);
+    this.svg.setAttribute('viewBox', `0 ${minY} 400 ${height}`);
 
     // Give the host a natural aspect-ratio matching the current viewBox. When
     // the consumer sets an explicit height (e.g. a resizable container), that
@@ -432,41 +469,45 @@ export class PowerFlow {
 
     // Expose colors to the CSS (dots and arcs) as custom properties.
     const style = this.svg.style;
-    style.setProperty("--sfd-solar", colors.solar);
-    style.setProperty("--sfd-grid-in", colors.gridIn);
-    style.setProperty("--sfd-grid-out", colors.gridOut);
-    style.setProperty("--sfd-battery-in", colors.batteryIn);
-    style.setProperty("--sfd-battery-out", colors.batteryOut);
-    style.setProperty("--sfd-wallbox", colors.wallbox);
-    style.setProperty("--sfd-wallbox2", colors.wallbox2);
+    style.setProperty('--sfd-solar', colors.solar);
+    style.setProperty('--sfd-grid-in', colors.gridIn);
+    style.setProperty('--sfd-grid-out', colors.gridOut);
+    style.setProperty('--sfd-battery-in', colors.batteryIn);
+    style.setProperty('--sfd-battery-out', colors.batteryOut);
+    style.setProperty('--sfd-wallbox', colors.wallbox);
+    style.setProperty('--sfd-wallbox2', colors.wallbox2);
 
     // Topology: show/hide the optional nodes and their tracks (each tagged with
     // a matching data-topo attribute). The solar↔battery track needs both nodes.
-    this.setTopo("solar", hasSolar);
-    this.setTopo("battery", hasBattery);
-    this.setTopo("wallbox", hasWallbox);
-    this.setTopo("wallbox2", hasWallbox2);
-    this.setTopo("solar-bat", hasSolar && hasBattery);
+    this.setTopo('solar', hasSolar);
+    this.setTopo('battery', hasBattery);
+    this.setTopo('wallbox', hasWallbox);
+    this.setTopo('wallbox2', hasWallbox2);
+    this.setTopo('solar-bat', hasSolar && hasBattery);
 
     // ── Dots ──
-    this.setDot("solar-home", solarToHome > 0, solarToHome);
-    this.setDot("solar-grid", solarToGrid > 0, solarToGrid);
-    this.setDot("grid-home", gridToHome > 0, gridToHome);
-    this.setDot("bat-home", hasBattery && batToHome > 0, batToHome);
-    this.setDot("bat-grid", hasBattery && batToGrid > 0, batToGrid);
-    this.setDot("solar-bat", hasBattery && solarToBattery > 0, solarToBattery);
-    this.setDot("grid-bat", hasBattery && gridToBattery > 0, gridToBattery);
-    this.setDot("home-wallbox", hasWallbox && wallboxWatts > 0, wallboxWatts);
-    this.setDot("home-wallbox2", hasWallbox2 && wallbox2Watts > 0, wallbox2Watts);
+    this.setDot('solar-home', solarToHome > 0, solarToHome);
+    this.setDot('solar-grid', solarToGrid > 0, solarToGrid);
+    this.setDot('grid-home', gridToHome > 0, gridToHome);
+    this.setDot('bat-home', hasBattery && batToHome > 0, batToHome);
+    this.setDot('bat-grid', hasBattery && batToGrid > 0, batToGrid);
+    this.setDot('solar-bat', hasBattery && solarToBattery > 0, solarToBattery);
+    this.setDot('grid-bat', hasBattery && gridToBattery > 0, gridToBattery);
+    this.setDot('home-wallbox', hasWallbox && wallboxWatts > 0, wallboxWatts);
+    this.setDot(
+      'home-wallbox2',
+      hasWallbox2 && wallbox2Watts > 0,
+      wallbox2Watts,
+    );
 
     // ── Solar node ──
     if (hasSolar) {
-      this.el["n-solar"].classList.toggle("dim", solarWatts === 0);
-      this.fill("solar-bg", tint(colors.solar));
-      this.stroke("solar-ring", colors.solar);
-      this.fill("solar-icon", colors.solar);
-      this.text("t-solar-val", formatWatts(solarWatts));
-      this.text("t-solar-lbl", labels.solar);
+      this.el['n-solar'].classList.toggle('dim', solarWatts === 0);
+      this.fill('solar-bg', tint(colors.solar));
+      this.stroke('solar-ring', colors.solar);
+      this.fill('solar-icon', colors.solar);
+      this.text('t-solar-val', formatWatts(solarWatts));
+      this.text('t-solar-lbl', labels.solar);
     }
 
     // Home arc: the fraction of the house load covered by solar, battery and
@@ -475,79 +516,84 @@ export class PowerFlow {
     const solarShare = load > 0 ? solarToHome / load : 0;
     const batteryShare = load > 0 ? batToHome / load : 0;
     const gridShare = load > 0 ? gridToHome / load : 0;
-    this.arc("arc-solar", solarShare, solarShare, 0);
-    this.arc("arc-bat", batteryShare, batteryShare, solarShare);
-    this.arc("arc-grid", gridShare, gridShare, solarShare + batteryShare);
+    this.arc('arc-solar', solarShare, solarShare, 0);
+    this.arc('arc-bat', batteryShare, batteryShare, solarShare);
+    this.arc('arc-grid', gridShare, gridShare, solarShare + batteryShare);
 
     // Grid arc: when exporting, what the export is made of (solar vs. battery).
     const gridExport = solarToGrid + batToGrid;
     const exportSolarShare = gridExport > 0 ? solarToGrid / gridExport : 0;
     const exportBatShare = gridExport > 0 ? batToGrid / gridExport : 0;
-    this.arc("garc-solar", exportSolarShare, exportSolarShare, 0);
-    this.arc("garc-bat", exportBatShare, exportBatShare, exportSolarShare);
+    this.arc('garc-solar', exportSolarShare, exportSolarShare, 0);
+    this.arc('garc-bat', exportBatShare, exportBatShare, exportSolarShare);
 
     // ── Grid node ──
     const gridColor = gridWatts >= 0 ? colors.gridIn : colors.gridOut;
-    this.fill("grid-bg", tint(gridColor));
-    this.stroke("grid-ring", gridColor);
-    this.fill("grid-icon", gridColor);
-    const gridVal = this.el["t-grid-val"] as SVGTextElement;
-    gridVal.setAttribute("fill", gridColor);
-    gridVal.textContent = `${gridWatts >= 0 ? "→" : "←"} ${formatWatts(Math.abs(gridWatts))}`;
-    this.text("t-grid-lbl", labels.grid);
+    this.fill('grid-bg', tint(gridColor));
+    this.stroke('grid-ring', gridColor);
+    this.fill('grid-icon', gridColor);
+    const gridVal = this.el['t-grid-val'] as SVGTextElement;
+    gridVal.setAttribute('fill', gridColor);
+    gridVal.textContent = `${gridWatts >= 0 ? '→' : '←'} ${formatWatts(Math.abs(gridWatts))}`;
+    this.text('t-grid-lbl', labels.grid);
 
     // ── Home node ──
-    this.fill("home-bg", tint(colors.home));
-    this.stroke("home-ring", colors.home);
-    this.fill("home-icon", colors.home);
-    this.text("t-home-val", formatWatts(loadWatts));
-    this.text("t-home-lbl", labels.home);
+    this.fill('home-bg', tint(colors.home));
+    this.stroke('home-ring', colors.home);
+    this.fill('home-icon', colors.home);
+    this.text('t-home-val', formatWatts(loadWatts));
+    this.text('t-home-lbl', labels.home);
 
     // ── Battery node ── (colour follows charge/discharge, like the grid node)
     if (hasBattery) {
-      const batteryColor = batteryWatts < 0 ? colors.batteryIn : colors.batteryOut;
-      this.fill("bat-bg", tint(batteryColor));
-      this.stroke("bat-ring", batteryColor);
-      this.fill("bat-icon", batteryColor);
-      const soc = this.el["t-bat-soc"] as SVGTextElement;
-      soc.style.display = data.batterySoc != null ? "" : "none";
-      if (data.batterySoc != null) soc.textContent = `${Math.round(data.batterySoc)} %`;
-      const watts = this.el["t-bat-watts"] as SVGTextElement;
-      watts.setAttribute("fill", batteryColor);
-      watts.textContent = `${batteryWatts >= 0 ? "↑" : "↓"} ${formatWatts(Math.abs(batteryWatts))}`;
-      this.text("t-bat-lbl", labels.battery);
+      const batteryColor =
+        batteryWatts < 0 ? colors.batteryIn : colors.batteryOut;
+      this.fill('bat-bg', tint(batteryColor));
+      this.stroke('bat-ring', batteryColor);
+      this.fill('bat-icon', batteryColor);
+      const soc = this.el['t-bat-soc'] as SVGTextElement;
+      soc.style.display = data.batterySoc != null ? '' : 'none';
+      if (data.batterySoc != null)
+        soc.textContent = `${Math.round(data.batterySoc)} %`;
+      const watts = this.el['t-bat-watts'] as SVGTextElement;
+      watts.setAttribute('fill', batteryColor);
+      watts.textContent = `${batteryWatts >= 0 ? '↑' : '↓'} ${formatWatts(Math.abs(batteryWatts))}`;
+      this.text('t-bat-lbl', labels.battery);
       // SoC inner ring — progress arc from 12 o'clock clockwise.
-      const socArc = this.el["bat-soc-arc"] as SVGCircleElement;
-      socArc.setAttribute("stroke", batteryColor);
-      const pct = data.batterySoc != null ? Math.max(0, Math.min(100, data.batterySoc)) / 100 : 0;
+      const socArc = this.el['bat-soc-arc'] as SVGCircleElement;
+      socArc.setAttribute('stroke', batteryColor);
+      const pct =
+        data.batterySoc != null
+          ? Math.max(0, Math.min(100, data.batterySoc)) / 100
+          : 0;
       socArc.style.strokeDasharray = `${pct * ARC_LENGTH} ${ARC_LENGTH}`;
     }
 
     // ── Wallbox node (below the house) ──
     if (hasWallbox) {
-      this.el["n-wallbox"].classList.toggle("dim", wallboxWatts === 0);
-      this.fill("wb-bg", tint(colors.wallbox));
-      this.stroke("wb-ring", colors.wallbox);
-      this.fill("wb-icon", colors.wallbox);
-      this.text("t-wb-val", formatWatts(wallboxWatts));
-      this.text("t-wb-lbl", labels.wallbox);
+      this.el['n-wallbox'].classList.toggle('dim', wallboxWatts === 0);
+      this.fill('wb-bg', tint(colors.wallbox));
+      this.stroke('wb-ring', colors.wallbox);
+      this.fill('wb-icon', colors.wallbox);
+      this.text('t-wb-val', formatWatts(wallboxWatts));
+      this.text('t-wb-lbl', labels.wallbox);
     }
 
     // ── Wallbox 2 node (above the house) ──
     if (hasWallbox2) {
-      this.el["n-wallbox2"].classList.toggle("dim", wallbox2Watts === 0);
-      this.fill("wb2-bg", tint(colors.wallbox2));
-      this.stroke("wb2-ring", colors.wallbox2);
-      this.fill("wb2-icon", colors.wallbox2);
-      this.text("t-wb2-val", formatWatts(wallbox2Watts));
-      this.text("t-wb2-lbl", labels.wallbox2);
+      this.el['n-wallbox2'].classList.toggle('dim', wallbox2Watts === 0);
+      this.fill('wb2-bg', tint(colors.wallbox2));
+      this.stroke('wb2-ring', colors.wallbox2);
+      this.fill('wb2-icon', colors.wallbox2);
+      this.text('t-wb2-val', formatWatts(wallbox2Watts));
+      this.text('t-wb2-lbl', labels.wallbox2);
     }
   }
 
   /** Remove the rendered diagram from its host and stop the animation loop. */
   destroy() {
     cancelAnimationFrame(this.raf);
-    this.root.innerHTML = "";
+    this.root.innerHTML = '';
     this.el = {};
     this.dots = {};
   }
@@ -559,20 +605,24 @@ export class PowerFlow {
   private setTopo(key: string, visible: boolean) {
     this.svg
       .querySelectorAll<SVGElement>(`[data-topo="${key}"]`)
-      .forEach((n) => (n.style.display = visible ? "" : "none"));
+      .forEach((n) => (n.style.display = visible ? '' : 'none'));
   }
 
   private fill(id: string, color: string) {
-    this.el[id]?.setAttribute("fill", color);
+    this.el[id]?.setAttribute('fill', color);
   }
 
   private stroke(id: string, color: string) {
-    this.el[id]?.setAttribute("stroke", color);
+    this.el[id]?.setAttribute('stroke', color);
   }
 
   private text(id: string, value: string) {
     const node = this.el[id];
     if (node) node.textContent = value;
+  }
+
+  private setIconPath(id: string, path: string) {
+    this.el[id]?.setAttribute('d', path);
   }
 
   // Show/hide a dot and set its speed. Only the speed changes on a value update
@@ -581,7 +631,7 @@ export class PowerFlow {
   private setDot(id: string, visible: boolean, watts: number) {
     const s = this.dots[id];
     s.visible = visible;
-    s.circle.style.display = visible ? "" : "none";
+    s.circle.style.display = visible ? '' : 'none';
     if (visible) {
       s.speed = this.flowSpeed(watts, s.length);
       // Place it at its current progress right away so it never flashes at the
@@ -595,8 +645,8 @@ export class PowerFlow {
   // the implied traversal time to [0.4s, 14s] — derived back into a speed — so
   // very small/large flows stay readable on any path length.
   private flowSpeed(watts: number, length: number): number {
-    const raw = Math.max(Math.abs(watts) * 0.1, 2); // 330 W → 33 px/s
-    const seconds = Math.max(0.4, Math.min(length / raw, 14));
+    const raw = (20 + Math.sqrt(Math.abs(watts)) * 4) * this.speedScale;
+    const seconds = Math.max(0.04, Math.min(length / raw, 14));
     return length / seconds;
   }
 
@@ -605,16 +655,16 @@ export class PowerFlow {
   private arc(id: string, share: number, dash: number, offsetShare: number) {
     const node = this.el[id] as SVGCircleElement;
     if (share <= 0) {
-      node.style.display = "none";
+      node.style.display = 'none';
       return;
     }
-    node.style.display = "";
+    node.style.display = '';
     node.setAttribute(
-      "stroke-dasharray",
+      'stroke-dasharray',
       `${dash * ARC_LENGTH} ${ARC_LENGTH - dash * ARC_LENGTH}`,
     );
     node.setAttribute(
-      "stroke-dashoffset",
+      'stroke-dashoffset',
       `${ARC_LENGTH * 0.25 - offsetShare * ARC_LENGTH}`,
     );
   }

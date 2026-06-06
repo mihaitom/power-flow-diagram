@@ -1,5 +1,5 @@
-import { PowerFlow } from "./core";
-import type { FlowData, FlowColors, FlowLabels } from "./core";
+import { PowerFlow } from './core';
+import type { FlowData, FlowColors, FlowLabels, FlowIcons } from './core';
 
 /**
  * `<power-flow>` custom element — a framework-agnostic energy-flow diagram.
@@ -17,13 +17,15 @@ import type { FlowData, FlowColors, FlowLabels } from "./core";
  */
 export class PowerFlowElement extends HTMLElement {
   static get observedAttributes() {
-    return ["data", "colors", "labels"];
+    return ['data', 'colors', 'labels'];
   }
 
   private pf: PowerFlow | null = null;
   private _data: FlowData = { solar: 0, grid: 0, load: 0 };
   private _colors: Partial<FlowColors> | undefined;
   private _labels: Partial<FlowLabels> | undefined;
+  private _icons: Partial<FlowIcons> | undefined;
+  private _speedScale: number | undefined;
 
   set data(value: FlowData) {
     this._data = value;
@@ -49,6 +51,22 @@ export class PowerFlowElement extends HTMLElement {
     return this._labels;
   }
 
+  set icons(value: Partial<FlowIcons> | undefined) {
+    this._icons = value;
+    this.render();
+  }
+  get icons(): Partial<FlowIcons> | undefined {
+    return this._icons;
+  }
+
+  set speedScale(value: number | undefined) {
+    this._speedScale = value;
+    this.render();
+  }
+  get speedScale(): number | undefined {
+    return this._speedScale;
+  }
+
   connectedCallback() {
     this.render();
   }
@@ -58,13 +76,17 @@ export class PowerFlowElement extends HTMLElement {
     this.pf = null;
   }
 
-  attributeChangedCallback(name: string, _old: string | null, value: string | null) {
+  attributeChangedCallback(
+    name: string,
+    _old: string | null,
+    value: string | null,
+  ) {
     if (value == null) return;
     try {
       const parsed = JSON.parse(value);
-      if (name === "data") this._data = parsed;
-      else if (name === "colors") this._colors = parsed;
-      else if (name === "labels") this._labels = parsed;
+      if (name === 'data') this._data = parsed;
+      else if (name === 'colors') this._colors = parsed;
+      else if (name === 'labels') this._labels = parsed;
       this.render();
     } catch {
       // Ignore malformed JSON in attributes — property setters are the main API.
@@ -73,7 +95,13 @@ export class PowerFlowElement extends HTMLElement {
 
   private render() {
     if (!this.isConnected) return;
-    const options = { data: this._data, colors: this._colors, labels: this._labels };
+    const options = {
+      data: this._data,
+      colors: this._colors,
+      labels: this._labels,
+      icons: this._icons,
+      speedScale: this._speedScale,
+    };
     if (this.pf) {
       this.pf.update(options);
     } else {
@@ -83,8 +111,8 @@ export class PowerFlowElement extends HTMLElement {
 }
 
 /** Register `<power-flow>` (idempotent). Safe to call multiple times. */
-export function definePowerFlow(tagName = "power-flow"): void {
-  if (typeof customElements === "undefined") return;
+export function definePowerFlow(tagName = 'power-flow'): void {
+  if (typeof customElements === 'undefined') return;
   if (!customElements.get(tagName)) {
     customElements.define(tagName, PowerFlowElement);
   }

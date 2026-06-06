@@ -38,7 +38,9 @@ crisp scalable vectors; no runtime framework dependency.
 - **Coverage rings** — home ring shows load sources (solar / battery / grid);
   grid ring shows export sources; battery ring shows state of charge.
 - **Themeable** — every node colour (including separate charge/discharge colours
-  for battery and grid) and every label is overridable.
+  for battery and grid), every label, and every node icon is overridable.
+- **Adjustable animation** — dot speed multiplier lets you slow down or speed up
+  the flow independently of the power values.
 - **Tiny & isolated** — ~7 kB min+gzip, zero runtime deps, shadow DOM so its
   styles never leak into your app.
 
@@ -58,27 +60,28 @@ npm install powerflow
 
 ```html
 <script type="module">
-  import "powerflow"; // registers the <power-flow> element
+  import 'powerflow'; // registers the <power-flow> element
 </script>
 
 <power-flow id="pf"></power-flow>
 
 <script type="module">
-  const pf = document.getElementById("pf");
+  const pf = document.getElementById('pf');
   pf.data = {
-    solar: 3000,     // PV production (W); omit/null hides the node
-    grid: -600,      // grid power: positive = import, negative = export
-    load: 2400,      // total house consumption (W)
-    battery: -500,   // negative = charging, positive = discharging; omit/null hides
-    batterySoc: 72,  // state of charge in % (optional, shows SoC ring)
-    wallbox: 3600,   // EV charger below the house (optional)
-    wallbox2: 3600,  // second EV charger above the house (optional)
+    solar: 3000, // PV production (W); omit/null hides the node
+    grid: -600, // grid power: positive = import, negative = export
+    load: 2400, // total house consumption (W)
+    battery: -500, // negative = charging, positive = discharging; omit/null hides
+    batterySoc: 72, // state of charge in % (optional, shows SoC ring)
+    wallbox: 3600, // EV charger below the house (optional)
+    wallbox2: 3600, // second EV charger above the house (optional)
   };
 </script>
 ```
 
-`data`, `colors` and `labels` are set as JS **properties** (objects). In plain
-HTML you can also pass them as JSON attributes:
+`data`, `colors`, `labels`, `icons` and `speedScale` are set as JS
+**properties**. In plain HTML you can also pass `data`, `colors` and `labels` as
+JSON attributes:
 `<power-flow data='{"solar":2400,"grid":-600,"load":1800}'></power-flow>`.
 
 ## Framework usage
@@ -87,12 +90,14 @@ HTML you can also pass them as JSON attributes:
 <summary><b>React</b></summary>
 
 ```tsx
-import "powerflow";
-import { useRef, useEffect } from "react";
+import 'powerflow';
+import { useRef, useEffect } from 'react';
 
 export function Energy({ data }) {
   const ref = useRef(null);
-  useEffect(() => { ref.current.data = data; }, [data]);
+  useEffect(() => {
+    ref.current.data = data;
+  }, [data]);
   return <power-flow ref={ref} />;
 }
 ```
@@ -129,9 +134,9 @@ once, then:
 <summary><b>Vanilla (no custom element)</b></summary>
 
 ```ts
-import { createPowerFlow } from "powerflow";
+import { createPowerFlow } from 'powerflow';
 
-const pf = createPowerFlow(document.getElementById("box"), { data });
+const pf = createPowerFlow(document.getElementById('box'), { data });
 pf.update({ data: nextData }); // cheap, call as often as you like
 pf.destroy();
 ```
@@ -143,28 +148,30 @@ leak into your app.
 
 ## API
 
-| Property / option | Type                  | Description                  |
-| ----------------- | --------------------- | ---------------------------- |
-| `data`            | `FlowData`            | Live power readings (watts). |
-| `colors`          | `Partial<FlowColors>` | Override any accent colour.  |
-| `labels`          | `Partial<FlowLabels>` | Override node labels (i18n). |
+| Property / option | Type                  | Description                                               |
+| ----------------- | --------------------- | --------------------------------------------------------- |
+| `data`            | `FlowData`            | Live power readings (watts).                              |
+| `colors`          | `Partial<FlowColors>` | Override any accent colour.                               |
+| `labels`          | `Partial<FlowLabels>` | Override node labels (i18n).                              |
+| `icons`           | `Partial<FlowIcons>`  | Override node icons (any SVG `<path d="">` string).       |
+| `speedScale`      | `number`              | Dot speed multiplier. `1` = default, `2` = twice as fast. |
 
 ### `FlowData`
 
 | Field        | Type             | Description                                              |
-| ------------ | ---------------- | ------------------------------------------------------- |
-| `solar`      | `number \| null` | Solar / PV production (≥ 0). Optional.                  |
-| `grid`       | `number`         | Grid power. Positive = import, negative = export.       |
-| `load`       | `number`         | Total house consumption (≥ 0).                          |
-| `battery`    | `number \| null` | Positive = discharging, negative = charging. Optional.  |
-| `batterySoc` | `number \| null` | Battery state of charge in percent. Optional.           |
-| `wallbox`    | `number \| null` | EV charger consumption, drawn below the house. Optional.|
-| `wallbox2`   | `number \| null` | Second EV charger, drawn above the house. Optional.     |
+| ------------ | ---------------- | -------------------------------------------------------- |
+| `solar`      | `number \| null` | Solar / PV production (≥ 0). Optional.                   |
+| `grid`       | `number`         | Grid power. Positive = import, negative = export.        |
+| `load`       | `number`         | Total house consumption (≥ 0).                           |
+| `battery`    | `number \| null` | Positive = discharging, negative = charging. Optional.   |
+| `batterySoc` | `number \| null` | Battery state of charge in percent. Optional.            |
+| `wallbox`    | `number \| null` | EV charger consumption, drawn below the house. Optional. |
+| `wallbox2`   | `number \| null` | Second EV charger, drawn above the house. Optional.      |
 
-> Only `grid` and `load` are required. Omitting (or passing `null` for) `solar` /
-> `battery` / `wallbox` / `wallbox2` hides that node, and the diagram trims the
-> now-empty row so there's no dead space. Both wallboxes are sub-consumers of
-> `load`, not extra load on top of it.
+> Only `grid` and `load` are required. Omitting (or passing `null` for) `solar`
+> / `battery` / `wallbox` / `wallbox2` hides that node, and the diagram trims
+> the now-empty row so there's no dead space. Both wallboxes are sub-consumers
+> of `load`, not extra load on top of it.
 
 ### `colors`
 
@@ -185,6 +192,33 @@ leak into your app.
 
 Defaults are English. Override per language, e.g.
 `{ grid: "Netz", home: "Haus", battery: "Akku" }`.
+
+### `icons`
+
+Each value is a valid SVG `<path d="…">` string. The defaults use
+[Material Design Icons](https://github.com/Templarian/MaterialDesign), but any
+SVG path drawn in a 24×24 viewBox works:
+
+```ts
+import { mdiSolarPanel, mdiFlash } from '@mdi/js';
+
+pf.icons = {
+  solar: mdiSolarPanel, // swap the default solar-power-variant icon
+  grid: mdiFlash, // swap the transmission tower
+  // home / battery / wallbox / wallbox2 — all optional
+};
+```
+
+### `speedScale`
+
+Multiplies the base dot speed for all animated legs. The base speed is already
+proportional to power, so `speedScale` lets you tune the visual intensity
+without changing the underlying data:
+
+```ts
+pf.speedScale = 0.5; // half speed — calmer animation
+pf.speedScale = 2; // twice as fast — more energetic feel
+```
 
 ## How the flows are computed
 
@@ -218,8 +252,9 @@ npm run capture:gif   # re-generate docs/preview.gif (requires ffmpeg + chromium
 
 ## Credits
 
-Inspired by [**power-flow-card-plus**](https://github.com/flixlix/power-flow-card-plus)
-by [@flixlix](https://github.com/flixlix) — the excellent Home Assistant card.
+Inspired by
+[**power-flow-card-plus**](https://github.com/flixlix/power-flow-card-plus) by
+[@flixlix](https://github.com/flixlix) — the excellent Home Assistant card.
 `powerflow` reuses its flow-allocation conventions but is a standalone,
 framework-agnostic Web Component with no Home Assistant dependency.
 
