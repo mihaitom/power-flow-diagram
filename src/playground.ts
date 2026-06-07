@@ -138,6 +138,7 @@ applyColors();
   () => {
     for (const [k, i] of Object.entries(cinp)) i.value = DEFAULT_COLORS[k];
     applyColors();
+    history.replaceState(null, '', '?' + encodeState());
   },
 );
 
@@ -162,20 +163,40 @@ const ICON_OPTIONS: Record<string, string[]> = {
 const DEFAULT_ICONS = Object.fromEntries(
   Object.entries(ICON_OPTIONS).map(([k, opts]) => [k, opts[0]]),
 );
+const ICON_NAMES: Record<string, string> = {
+  [mdiSolarPowerVariant]: 'mdiSolarPowerVariant',
+  [mdiSolarPanel]: 'mdiSolarPanel',
+  [mdiWeatherSunny]: 'mdiWeatherSunny',
+  [mdiTransmissionTower]: 'mdiTransmissionTower',
+  [mdiPowerPlug]: 'mdiPowerPlug',
+  [mdiFlash]: 'mdiFlash',
+  [mdiHome]: 'mdiHome',
+  [mdiHomeOutline]: 'mdiHomeOutline',
+  [mdiHomeModern]: 'mdiHomeModern',
+  [mdiBatteryMedium]: 'mdiBatteryMedium',
+  [mdiBatteryCharging60]: 'mdiBatteryCharging60',
+  [mdiHomeBattery]: 'mdiHomeBattery',
+  [mdiEvStation]: 'mdiEvStation',
+  [mdiCarElectric]: 'mdiCarElectric',
+  [mdiEvPlugType2]: 'mdiEvPlugType2',
+};
+let currentIcons: Record<string, string> = { ...DEFAULT_ICONS };
 (document.getElementById('shuffle-icons') as HTMLElement).addEventListener(
   'click',
   () => {
-    el.icons = Object.fromEntries(
+    currentIcons = Object.fromEntries(
       Object.entries(ICON_OPTIONS).map(([k, opts]) => [
         k,
         opts[Math.floor(Math.random() * opts.length)],
       ]),
     );
+    el.icons = currentIcons;
   },
 );
 (document.getElementById('reset-icons') as HTMLElement).addEventListener(
   'click',
   () => {
+    currentIcons = { ...DEFAULT_ICONS };
     el.icons = { ...DEFAULT_ICONS };
   },
 );
@@ -481,15 +502,32 @@ function buildSnippet(fw: string): string {
       .map(([k, i]) => [k, i.value]),
   );
 
+  const changedIconEntries = Object.entries(currentIcons).filter(
+    ([k, v]) => v !== DEFAULT_ICONS[k],
+  );
+  const hasIcons = changedIconEntries.length > 0;
+  const iconConstNames = changedIconEntries.map(([, v]) => ICON_NAMES[v]).filter(Boolean);
+  const iconObjStr = (pad: string) => {
+    const inner = changedIconEntries
+      .map(([k, v]) => `${pad}  ${k}: ${ICON_NAMES[v] ?? JSON.stringify(v)}`)
+      .join(',\n');
+    return `{\n${inner},\n${pad}}`;
+  };
+
   const assign = (pfVar: string, pad: string): string => {
     const r = [`${pad}${pfVar}.data = ${jsObj(data, pad)};`];
     if (Object.keys(changedColors).length)
       r.push(`${pad}${pfVar}.colors = ${jsObj(changedColors, pad)};`);
+    if (hasIcons)
+      r.push(`${pad}${pfVar}.icons = ${iconObjStr(pad)};`);
     if (de) r.push(`${pad}${pfVar}.labels = ${jsObj(el.labels, pad)};`);
     if (+speedInp.value !== 1)
       r.push(`${pad}${pfVar}.speedScale = ${+speedInp.value};`);
     return r.join('\n');
   };
+
+  const mdiImport = hasIcons ? `import { ${iconConstNames.join(', ')} } from '@mdi/js';\n` : '';
+  const mdiImportHtml = hasIcons ? `  import { ${iconConstNames.join(', ')} } from 'https://esm.sh/@mdi/js';\n` : '';
 
   if (fw === 'html')
     return `<script type="module" src="https://unpkg.com/powerflow"><\/script>
@@ -497,13 +535,13 @@ function buildSnippet(fw: string): string {
 <power-flow id="pf"><\/power-flow>
 
 <script type="module">
-  const pf = document.getElementById("pf");
+${mdiImportHtml}  const pf = document.getElementById("pf");
 ${assign('pf', '  ')}
 <\/script>`;
 
   if (fw === 'react')
     return `import "powerflow";
-import { useRef, useEffect } from "react";
+${mdiImport}import { useRef, useEffect } from "react";
 
 export function PowerFlowWidget() {
   const ref = useRef(null);
@@ -516,7 +554,7 @@ ${assign('pf', '    ')}
 
   if (fw === 'angular')
     return `import "powerflow";
-import { Component, ElementRef, ViewChild, AfterViewInit } from "@angular/core";
+${mdiImport}import { Component, ElementRef, ViewChild, AfterViewInit } from "@angular/core";
 
 @Component({
   selector: "app-power-flow",
@@ -537,7 +575,7 @@ ${assign('this.pf.nativeElement', '    ')}
 
 <script setup>
 import "powerflow";
-import { ref, onMounted } from "vue";
+${mdiImport}import { ref, onMounted } from "vue";
 
 const pf = ref(null);
 onMounted(() => {
@@ -548,7 +586,7 @@ ${assign('pf.value', '  ')}
   if (fw === 'svelte')
     return `<script>
   import "powerflow";
-  import { onMount } from "svelte";
+${mdiImport ? '  ' + mdiImport.trimEnd() + '\n' : ''}  import { onMount } from "svelte";
   let pf;
   onMount(() => {
 ${assign('pf', '    ')}
