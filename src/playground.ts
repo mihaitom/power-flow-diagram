@@ -378,6 +378,7 @@ for (const tc of testCases) {
     updateLoadMin();
     inp.load.value = String(tc.load);
     updateGrid();
+    history.replaceState(null, '', '?' + encodeState());
   });
   tcRow.appendChild(b);
 }
